@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'pages/landing_page.dart';
+import 'app_routes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,13 +12,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'App de Hábitos',
       debugShowCheckedModeBanner: false,
+      title: 'App de Hábitos',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
+        fontFamily: 'Roboto',
       ),
-      home: const LandingPage(),
+      initialRoute: AppRoutes.landing,
+      getPages: AppRoutes.routes,
     );
   }
 }
