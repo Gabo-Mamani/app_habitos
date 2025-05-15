@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../layouts/app_layout.dart';
 
 class CrearHabitoPage extends StatefulWidget {
@@ -23,6 +24,7 @@ class _CrearHabitoPageState extends State<CrearHabitoPage> {
       child: Form(
         key: _formKey,
         child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
             const Text(
               'Crear nuevo hábito ✍️',
@@ -71,15 +73,30 @@ class _CrearHabitoPageState extends State<CrearHabitoPage> {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 if (_formKey.currentState?.validate() ?? false) {
                   _formKey.currentState?.save();
-                  // Aquí irá la lógica para guardar el hábito en Firebase u otra base
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('✅ Hábito "$nombre" guardado con éxito')),
-                  );
-                  Navigator.pop(context); // Volver a la vista anterior
+                  try {
+                    await FirebaseFirestore.instance.collection('habitos').add({
+                      'nombre': nombre,
+                      'frecuencia': frecuencia,
+                      'duracion': duracion,
+                      'creadoEn': Timestamp.now(),
+                      'icono': Icons.flag.codePoint,
+                      'color': Colors.teal.value
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text('✅ Hábito "$nombre" guardado con éxito')),
+                    );
+                    Navigator.pop(context);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('❌ Error al guardar: $e')),
+                    );
+                  }
                 }
               },
               icon: const Icon(Icons.save),
