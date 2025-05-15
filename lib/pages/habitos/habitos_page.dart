@@ -217,7 +217,16 @@ class _HabitosPageState extends State<HabitosPage> {
                           child: Icon(icon, color: Colors.white),
                         ),
                         title: Text(data['nombre'] ?? 'Sin nombre'),
-                        subtitle: Text('Frecuencia: ${data['frecuencia']}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Frecuencia: ${data['frecuencia']}'),
+                            if (data['duracion'] > 0)
+                              Text('Duración: ${data['duracion']} min',
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.black87)),
+                          ],
+                        ),
                         trailing: FutureBuilder<DocumentSnapshot>(
                           future: FirebaseFirestore.instance
                               .collection('habitos')
