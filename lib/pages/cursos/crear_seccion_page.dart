@@ -30,7 +30,7 @@ class _CrearSeccionPageState extends State<CrearSeccionPage> {
           .collection('secciones')
           .add(nuevaSeccion);
 
-      Get.back(); // Volver a la pantalla anterior
+      Get.back();
     }
   }
 

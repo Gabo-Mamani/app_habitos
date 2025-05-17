@@ -1,6 +1,8 @@
+import 'package:app_habitos/pages/cursos/crear_leccion_page.dart';
 import 'package:app_habitos/pages/cursos/crear_seccion_page.dart';
 import 'package:app_habitos/pages/cursos/curso_detail_page.dart';
 import 'package:app_habitos/pages/cursos/cursos_page.dart';
+import 'package:app_habitos/pages/cursos/lecciones_page.dart';
 import 'package:app_habitos/pages/habitos/crear_habito_page.dart';
 import 'package:app_habitos/pages/habitos/habitos_page.dart';
 import 'package:app_habitos/pages/perfil/perfil_page.dart';
@@ -18,6 +20,8 @@ class AppRoutes {
   static const perfil = '/perfil';
   static const crearHabito = '/crear-habito';
   static const crearSeccion = '/crear-seccion';
+  static const lecciones = '/lecciones';
+  static const crearLeccion = '/crear-leccion';
 
   static final routes = [
     GetPage(name: landing, page: () => const LandingPage()),
@@ -30,6 +34,27 @@ class AppRoutes {
         return CursoDetailPage(
           cursoId: args['cursoId'],
           cursoNombre: args['cursoNombre'],
+        );
+      },
+    ),
+    GetPage(
+      name: lecciones,
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>;
+        return LeccionesPage(
+          cursoId: args['cursoId'],
+          seccionId: args['seccionId'],
+          seccionNombre: args['seccionNombre'],
+        );
+      },
+    ),
+    GetPage(
+      name: crearLeccion,
+      page: () {
+        final args = Get.arguments as Map<String, dynamic>;
+        return CrearLeccionPage(
+          cursoId: args['cursoId'],
+          seccionId: args['seccionId'],
         );
       },
     ),

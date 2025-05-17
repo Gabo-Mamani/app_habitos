@@ -64,7 +64,11 @@ class CursoDetailPage extends StatelessWidget {
                         subtitle: Text('Orden: ${data['orden'] ?? '-'}'),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
-                          // Acción futura: abrir lista de lecciones
+                          Get.toNamed('/lecciones', arguments: {
+                            'cursoId': cursoId,
+                            'seccionId': secciones[index].id,
+                            'seccionNombre': data['nombre'],
+                          });
                         },
                       ),
                     );
