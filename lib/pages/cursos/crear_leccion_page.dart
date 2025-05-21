@@ -23,8 +23,15 @@ class CrearLeccionPage extends StatefulWidget {
 class _CrearLeccionPageState extends State<CrearLeccionPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _tituloController = TextEditingController();
-  final TextEditingController _ordenController = TextEditingController();
   final TextEditingController _campoTexto = TextEditingController();
+  final TextEditingController _descripcionController = TextEditingController();
+
+  final List<TextEditingController> _opcionesControllers = List.generate(
+    3,
+    (_) => TextEditingController(),
+  );
+
+  int _respuestaSeleccionada = 0;
 
   String _tipoSeleccionado = 'video_youtube';
   File? _archivoSeleccionado;
@@ -46,36 +53,49 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
 
   Future<void> _guardarLeccion() async {
     if (_formKey.currentState!.validate()) {
-      Map<String, dynamic> contenido;
+      Map<String, dynamic> nuevaLeccion = {
+        'titulo': _tituloController.text.trim(),
+        'tipo': _tipoSeleccionado,
+        'descripcion': _descripcionController.text.trim(),
+      };
 
       switch (_tipoSeleccionado) {
         case 'video_youtube':
-          contenido = {'url': _campoTexto.text.trim()};
+          nuevaLeccion['url'] = _campoTexto.text.trim();
           break;
+
         case 'video_subido':
+          nuevaLeccion['archivo'] = _archivoNombre ?? 'archivo_local';
+          nuevaLeccion['path_local'] = _archivoSeleccionado?.path ?? 'sin_path';
+          break;
+
         case 'teoria':
-          contenido = {
-            'archivo': _archivoNombre ?? 'archivo_local',
-            'path_local': _archivoSeleccionado?.path ?? 'sin_path'
-          };
+          nuevaLeccion['archivo'] = _archivoNombre;
+          nuevaLeccion['path_local'] = _archivoSeleccionado?.path;
           break;
+
         case 'reto':
-          contenido = {
-            'pregunta': _campoTexto.text.trim(),
-            'opciones': ['Opción A', 'Opción B'],
-            'respuesta_correcta': 'Opción A'
-          };
+          nuevaLeccion['pregunta'] = _campoTexto.text.trim();
+          nuevaLeccion['opciones'] =
+              _opcionesControllers.map((c) => c.text.trim()).toList();
+          nuevaLeccion['respuesta_correcta'] =
+              _opcionesControllers[_respuestaSeleccionada].text.trim();
           break;
+
         default:
-          contenido = {'texto': _campoTexto.text.trim()};
+          nuevaLeccion['texto'] = _campoTexto.text.trim();
       }
 
-      final nuevaLeccion = {
-        'titulo': _tituloController.text.trim(),
-        'tipo': _tipoSeleccionado,
-        'contenido': contenido,
-        'orden': int.tryParse(_ordenController.text.trim()) ?? 0,
-      };
+      final leccionesSnap = await FirebaseFirestore.instance
+          .collection('cursos')
+          .doc(widget.cursoId)
+          .collection('secciones')
+          .doc(widget.seccionId)
+          .collection('lecciones')
+          .get();
+
+      final siguienteOrden = leccionesSnap.docs.length;
+      nuevaLeccion['orden'] = siguienteOrden;
 
       await FirebaseFirestore.instance
           .collection('cursos')
@@ -92,14 +112,30 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
   Widget _campoDinamico() {
     switch (_tipoSeleccionado) {
       case 'video_youtube':
-        return TextFormField(
-          controller: _campoTexto,
-          decoration: const InputDecoration(
-            labelText: 'URL de YouTube',
-            border: OutlineInputBorder(),
-          ),
-          validator: (v) => v == null || v.isEmpty ? 'Campo requerido' : null,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _campoTexto,
+              decoration: const InputDecoration(
+                labelText: 'URL de YouTube',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'Campo requerido' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descripcionController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Texto explicativo (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         );
+
       case 'video_subido':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,9 +145,19 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
               icon: const Icon(Icons.video_file),
               label: const Text('Seleccionar video (.mp4)'),
             ),
-            if (_archivoNombre != null) Text('📁 $_archivoNombre')
+            if (_archivoNombre != null) Text('📁 $_archivoNombre'),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descripcionController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Texto explicativo (opcional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
           ],
         );
+
       case 'teoria':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,8 +173,55 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
             if (_archivoNombre != null) Text('📄 $_archivoNombre'),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _campoTexto,
+              controller: _descripcionController,
               maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Texto explicativo',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        );
+
+      case 'reto':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _campoTexto,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Pregunta del reto',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'Campo requerido' : null,
+            ),
+            const SizedBox(height: 16),
+            const Text('Opciones de respuesta:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            ...List.generate(_opcionesControllers.length, (index) {
+              return ListTile(
+                title: TextFormField(
+                  controller: _opcionesControllers[index],
+                  decoration: InputDecoration(
+                    labelText: 'Opción ${String.fromCharCode(65 + index)}',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                leading: Radio<int>(
+                  value: index,
+                  groupValue: _respuestaSeleccionada,
+                  onChanged: (value) {
+                    setState(() => _respuestaSeleccionada = value!);
+                  },
+                ),
+              );
+            }),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descripcionController,
+              maxLines: 3,
               decoration: const InputDecoration(
                 labelText: 'Texto explicativo (opcional)',
                 border: OutlineInputBorder(),
@@ -136,16 +229,7 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
             ),
           ],
         );
-      case 'reto':
-        return TextFormField(
-          controller: _campoTexto,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Pregunta del reto',
-            border: OutlineInputBorder(),
-          ),
-          validator: (v) => v == null || v.isEmpty ? 'Campo requerido' : null,
-        );
+
       default:
         return const SizedBox.shrink();
     }
@@ -196,24 +280,18 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
                 setState(() {
                   _tipoSeleccionado = valor!;
                   _campoTexto.clear();
+                  _descripcionController.clear();
                   _archivoSeleccionado = null;
                   _archivoNombre = null;
+                  for (var controller in _opcionesControllers) {
+                    controller.clear();
+                  }
+                  _respuestaSeleccionada = 0;
                 });
               },
             ),
             const SizedBox(height: 20),
             _campoDinamico(),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _ordenController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Orden',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) =>
-                  v == null || v.isEmpty ? 'Este campo es obligatorio' : null,
-            ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
               onPressed: _guardarLeccion,
@@ -224,7 +302,7 @@ class _CrearLeccionPageState extends State<CrearLeccionPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               ),
-            )
+            ),
           ],
         ),
       ),

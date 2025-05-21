@@ -1,10 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:video_player/video_player.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'widgets/leccion_video_youtube.dart';
+import 'widgets/leccion_video_subido.dart';
+import 'widgets/leccion_pdf.dart';
+import 'widgets/leccion_teoria_texto.dart';
+import 'widgets/leccion_reto.dart';
 
-class LeccionViewPage extends StatefulWidget {
+class LeccionViewPage extends StatelessWidget {
   final String tipo;
   final Map<String, dynamic> contenido;
   final String titulo;
@@ -17,132 +18,84 @@ class LeccionViewPage extends StatefulWidget {
   });
 
   @override
-  State<LeccionViewPage> createState() => _LeccionViewPageState();
-}
-
-class _LeccionViewPageState extends State<LeccionViewPage> {
-  VideoPlayerController? _videoController;
-
-  @override
-  void initState() {
-    super.initState();
-
-    if (widget.tipo == 'video_subido' &&
-        widget.contenido['path_local'] != null) {
-      _videoController =
-          VideoPlayerController.file(File(widget.contenido['path_local']))
-            ..initialize().then((_) {
-              setState(() {});
-              _videoController!.play();
-            });
-    }
-  }
-
-  @override
-  void dispose() {
-    _videoController?.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    Widget content;
-
-    switch (widget.tipo) {
-      case 'video_youtube':
-        final videoId =
-            YoutubePlayer.convertUrlToId(widget.contenido['url'] ?? '');
-        content = YoutubePlayer(
-          controller: YoutubePlayerController(
-            initialVideoId: videoId ?? '',
-            flags: const YoutubePlayerFlags(autoPlay: true),
-          ),
-          showVideoProgressIndicator: true,
-        );
-        break;
-
-      case 'video_subido':
-        content =
-            _videoController != null && _videoController!.value.isInitialized
-                ? AspectRatio(
-                    aspectRatio: _videoController!.value.aspectRatio,
-                    child: VideoPlayer(_videoController!),
-                  )
-                : const Center(child: CircularProgressIndicator());
-        break;
-
-      case 'teoria':
-        final path = widget.contenido['path_local'];
-        if (path != null && path.toString().endsWith('.pdf')) {
-          content = SizedBox(
-            height: MediaQuery.of(context).size.height * 0.8,
-            child: PDFView(
-              filePath: path,
-              enableSwipe: true,
-              swipeHorizontal: false,
-              autoSpacing: true,
-              pageFling: true,
-            ),
-          );
-        } else {
-          content = Text(
-            widget.contenido['texto'] ?? 'Sin contenido',
-            style: const TextStyle(fontSize: 16),
-          );
-        }
-        break;
-
-      case 'reto':
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.contenido['pregunta'] ?? 'Sin pregunta',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            ...List<String>.from(widget.contenido['opciones'] ?? [])
-                .map((opcion) {
-              return ElevatedButton(
-                onPressed: () {
-                  final correcta = widget.contenido['respuesta_correcta'];
-                  final esCorrecta = opcion == correcta;
-                  final mensaje =
-                      esCorrecta ? '¡Correcto! 🎉' : 'Incorrecto 😞';
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(mensaje),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cerrar'),
-                        )
-                      ],
-                    ),
-                  );
-                },
-                child: Text(opcion),
-              );
-            })
-          ],
-        );
-        break;
-
-      default:
-        content = const Text('Tipo de lección no reconocido');
-        break;
-    }
+    final int numeroLeccion = contenido['orden'] ?? 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.titulo),
+        title: Text('Lección ${numeroLeccion + 1}'),
         backgroundColor: Colors.teal,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: content,
+        child: _renderLeccion(),
       ),
     );
+  }
+
+  Widget _renderLeccion() {
+    final String? path = contenido['path_local'];
+    final String? url = contenido['url'];
+    final String? texto = contenido['texto'];
+    final String? descripcion = contenido['descripcion'];
+    final String? pregunta = contenido['pregunta'];
+    final List<dynamic>? opciones = contenido['opciones'];
+    final String? respuestaCorrecta = contenido['respuesta_correcta'];
+
+    switch (tipo) {
+      case 'video_youtube':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LeccionVideoYoutube(
+              url: url ?? '',
+              titulo: titulo,
+            ),
+            if ((descripcion ?? '').isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(descripcion!, style: const TextStyle(fontSize: 16)),
+            ]
+          ],
+        );
+
+      case 'video_subido':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LeccionVideoSubido(
+              path: path ?? '',
+            ),
+            if ((descripcion ?? '').isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(descripcion!, style: const TextStyle(fontSize: 16)),
+            ]
+          ],
+        );
+
+      case 'teoria':
+        if (path != null && path.endsWith('.pdf')) {
+          return LeccionPdf(
+            titulo: titulo,
+            descripcion: descripcion ?? '',
+            pathPdf: path,
+          );
+        } else {
+          return LeccionTeoriaTexto(
+            texto: texto ?? descripcion ?? 'Esta lección no contiene texto.',
+            titulo: titulo,
+          );
+        }
+
+      case 'reto':
+        return LeccionReto(
+          pregunta: pregunta ?? '',
+          opciones: opciones ?? [],
+          respuestaCorrecta: respuestaCorrecta ?? '',
+          descripcion: descripcion,
+        );
+
+      default:
+        return const Text('Tipo de lección no reconocido');
+    }
   }
 }

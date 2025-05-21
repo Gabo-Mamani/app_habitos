@@ -1,8 +1,8 @@
 import 'package:app_habitos/pages/cursos/leccion_view_page.dart';
+import 'package:app_habitos/pages/cursos/editar_leccion_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import '../../layouts/app_layout.dart';
 
 class LeccionesPage extends StatelessWidget {
@@ -73,24 +73,45 @@ class LeccionesPage extends StatelessWidget {
                 return ListView.builder(
                   itemCount: lecciones.length,
                   itemBuilder: (context, index) {
-                    final data =
-                        lecciones[index].data() as Map<String, dynamic>;
+                    final doc = lecciones[index];
+                    final data = doc.data() as Map<String, dynamic>;
+
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       child: ListTile(
                         leading: const Icon(Icons.play_circle),
                         title: Text(data['titulo'] ?? 'Sin título'),
-                        subtitle:
-                            Text('Tipo: ${data['tipo'] ?? 'desconocido'}'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          Get.to(() => LeccionViewPage(
-                                titulo: data['titulo'],
-                                tipo: data['tipo'],
-                                contenido: Map<String, dynamic>.from(
-                                    data['contenido']),
-                              ));
-                        },
+                        subtitle: Text(
+                            'Tipo: ${data['tipo'] ?? 'desconocido'} • Orden: ${data['orden'] ?? '-'}'),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'ver') {
+                              Get.to(() => LeccionViewPage(
+                                    titulo: data['titulo'],
+                                    tipo: data['tipo'],
+                                    contenido: Map<String, dynamic>.from(data),
+                                  ));
+                            } else if (value == 'editar') {
+                              Get.to(() => EditarLeccionPage(
+                                    cursoId: cursoId,
+                                    seccionId: seccionId,
+                                    leccionId: doc.id,
+                                    data: Map<String, dynamic>.from(
+                                        doc.data() as Map<String, dynamic>),
+                                  ));
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'ver',
+                              child: Text('Ver'),
+                            ),
+                            PopupMenuItem(
+                              value: 'editar',
+                              child: Text('Editar'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
